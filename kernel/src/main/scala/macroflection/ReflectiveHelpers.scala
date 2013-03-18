@@ -9,9 +9,9 @@ class ReflectiveHelpers[U <: Universe](val universe: U) {
 
   def typeCtorOf[T: WeakTypeTag] = weakTypeOf[T].typeConstructor
 
-  lazy val pairApply = selectChain(Ident("scala"), "Tuple2", "apply")
-  lazy val mapApply = selectChain(Ident("scala"), "Predef", "Map", "apply")
-  lazy val seqApply = selectChain(Ident("scala"), "Seq", "apply")
+  lazy val pairApply = selectChain(Ident(newTermName("scala")), "Tuple2", "apply")
+  lazy val mapApply  = selectChain(Ident(newTermName("scala")), "Predef", "Map", "apply")
+  lazy val seqApply  = selectChain(Ident(newTermName("scala")), "Seq", "apply")
 
 
   def mkPair(left: Tree, right: Tree) = Apply(pairApply, List(left, right))

@@ -15,8 +15,9 @@ object MacroflectionBuild extends Build {
 
   lazy val buildSettings = Seq(
     organization := "com.github.kevinwright.macroflection",
-    scalaVersion := "2.10.0",
-    scalacOptions := Seq("-feature", "-deprecation", "-unchecked", "-Xlint", "-encoding", "utf8")
+    scalaVersion := "2.10.1",
+    scalacOptions := Seq("-feature", "-deprecation", "-unchecked", "-Xlint", "-Yrangepos", "-encoding", "utf8"),
+    scalacOptions in (console) += "-Yrangepos"
   )
 
   lazy val root = Project(id = "root", base = file("."))

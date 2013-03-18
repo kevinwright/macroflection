@@ -11,9 +11,8 @@ trait Macroflection {
   def tag: TypeTag[TPE]
   def isSeq: Boolean
   def isCompound: Boolean
-  def children: Seq[Macroflection.Child]
-
-  def child(nme: String): Option[Macroflection.Child] = children find {_.name == nme}
+  def asSeq: SeqMacroflection[TPE] = this.asInstanceOf[SeqMacroflection[TPE]]
+  def asCompound: CompoundMacroflection[TPE] = this.asInstanceOf[CompoundMacroflection[TPE]]
 }
 
 abstract class MacroflectionAux[T : TypeTag] extends Macroflection {
@@ -23,24 +22,25 @@ abstract class MacroflectionAux[T : TypeTag] extends Macroflection {
 
 
 
-trait CompoundMacroflection extends Macroflection {
-  val isSeq = false
-  val isCompound = true
-}
 
 class SimpleMacroflection[T: TypeTag] extends MacroflectionAux[T] {
   val isSeq = false
   val isCompound = false
-  val children = Seq.empty[Macroflection.Child]
 }
 
-//trait SeqMacroflection[T: TypeTag] extends MacroflectionAux[T] {
-//  val isSeq = true
-//  val isCompound = false
-//}
+trait SeqMacroflection[S] extends MacroflectionAux[S] {
+  val isSeq = true
+  val isCompound = false
+  def elem: Macroflection
+}
 
-class ProductMacroflection[T: TypeTag](val children: Seq[Macroflection.Child])
-  extends MacroflectionAux[T] with CompoundMacroflection
+class SeqMacroflectionAux[T, S <: Seq[T] : TypeTag](val elem: MacroflectionAux[T]) extends SeqMacroflection[S]
+
+class CompoundMacroflection[T: TypeTag](val children: Seq[Macroflection.Child]) extends MacroflectionAux[T]  {
+  val isSeq = false
+  val isCompound = true
+  def child(nme: String): Option[Macroflection.Child] = children find {_.name == nme}
+}
 
 
 
@@ -73,18 +73,16 @@ object Macroflection {
   implicit object charHasMflection   extends SimpleMacroflection[Char]
   implicit object stringHasMflection extends SimpleMacroflection[String]
 
-  type SeqType[A] = Seq[A] {
-    type TPE = A
-  }
 
-//  implicit def seqsHaveMflection[({type λ[α] = Seq[A]})#λ](implicit tt: TypeTag[S]): SeqMacroflection[S] =
-//    macro productsHaveMflectionImpl[T]
+  implicit def seqsHaveMflection[T, S <: Seq[T]]
+    (implicit tt: TypeTag[T], tts: TypeTag[S], elem: MacroflectionAux[T]): SeqMacroflection[S] =
+    new SeqMacroflectionAux[T,S](elem)
 
-  implicit def productsHaveMflection[T](implicit isProduct: T <:< Product): ProductMacroflection[T] =
+  implicit def productsHaveMflection[T](implicit isProduct: T <:< Product): CompoundMacroflection[T] =
     macro productsHaveMflectionImpl[T]
 
-  def productsHaveMflectionImpl[T : c.WeakTypeTag](c: Context)(isProduct: c.Expr[T <:< Product]): c.Expr[ProductMacroflection[T]] = {
-    c.Expr[ProductMacroflection[T]](InContext[c.type](c).mkProductMflection(c.weakTypeOf[T]))
+  def productsHaveMflectionImpl[T : c.WeakTypeTag](c: Context)(isProduct: c.Expr[T <:< Product]): c.Expr[CompoundMacroflection[T]] = {
+    c.Expr[CompoundMacroflection[T]](InContext[c.type](c).mkProductMflection(c.weakTypeOf[T]))
   }
 
   private object InContext {
@@ -146,9 +144,9 @@ object Macroflection {
       }
 
       def mkProductSchemaTree(prodType: Type, kids: List[Tree]): Tree = {
-        val prodSchemaType = mkAppliedType[ProductMacroflection](prodType)
+        val prodSchemaType = mkAppliedType[CompoundMacroflection](prodType)
         val kidsTree = mkSeq(kids)
-        log("kidsTree: " + show(kidsTree))
+//        log("kidsTree: " + show(kidsTree))
 
         Apply(
           Select(
