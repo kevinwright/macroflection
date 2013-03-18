@@ -31,11 +31,9 @@ object MacroflectionBuild extends Build {
   lazy val tests = Project(id = "tests", base = file("tests"))
     .dependsOn(kernel)
     .configs(IntegrationTest)
-    .settings(testSettings : _*)
+    .settings(commonSettings : _*)
 
 
-
-  lazy val testSettings = commonSettings ++ Seq(libraryDependencies ++= Dependencies.test)
 
   lazy val commonSettings = Defaults.defaultSettings ++
     sbtPromptSettings ++
@@ -54,13 +52,14 @@ object MacroflectionBuild extends Build {
     resolvers ++= Resolvers.all,
     ivyXML := ivyDeps,
     libraryDependencies ++= Dependencies.core,
+    libraryDependencies ++= Dependencies.test,
     libraryDependencies <++= (scalaVersion)(sv =>
       Seq(
         "org.scala-lang" % "scala-reflect" % sv,
         "org.scala-lang" % "scala-compiler" % sv
       )
     ),
-    testOptions in Test += Tests.Argument("console", "junitxml")
+    testOptions in Test += Tests.Argument("console") //, "junitxml")
   )
 
   lazy val publishSettings: Seq[Setting[_]] = Seq(

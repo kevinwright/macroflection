@@ -35,6 +35,7 @@ object Dependencies {
     lazy val specs2 =    "org.specs2"                 %% "specs2"                        % "1.13"    % "test"
     lazy val mockito =   "org.mockito"                %  "mockito-core"                  % "1.9.0"   % "test"
     lazy val hamcrest =  "org.hamcrest"               %  "hamcrest-core"                 % "1.3"     % "test"
+    lazy val junit =     "junit"                      % "junit"                          % "4.7"     % "test" //for xml output
 
     lazy val all = Seq(logback, groovy, janino, specs2, mockito, hamcrest)
 
