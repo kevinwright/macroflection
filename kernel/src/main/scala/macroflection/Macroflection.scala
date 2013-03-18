@@ -74,9 +74,16 @@ object Macroflection {
   implicit object stringHasMflection extends SimpleMacroflection[String]
 
 
-  implicit def seqsHaveMflection[T, S <: Seq[T]]
-    (implicit tt: TypeTag[T], tts: TypeTag[S], elem: MacroflectionAux[T]): SeqMacroflection[S] =
-    new SeqMacroflectionAux[T,S](elem)
+//  implicit def seqsHaveMflection[T, S <: Seq[T]]
+//    (implicit tt: TypeTag[T], tts: TypeTag[S], elem: MacroflectionAux[T]): SeqMacroflection[S] =
+//    new SeqMacroflectionAux[T,S](elem)
+
+  implicit def seqsHaveMflection[S](implicit isSeq: S <:< Seq[_]): SeqMacroflection[S] =
+    macro seqsHaveMflectionImpl[S]
+
+  def seqsHaveMflectionImpl[S : c.WeakTypeTag](c: Context)(isSeq: c.Expr[S <:< Seq[_]]): c.Expr[SeqMacroflection[S]] = {
+    c.Expr[SeqMacroflection[S]](InContext[c.type](c).mkSeqMflection(c.weakTypeOf[S]))
+  }
 
   implicit def productsHaveMflection[T](implicit isProduct: T <:< Product): CompoundMacroflection[T] =
     macro productsHaveMflectionImpl[T]
@@ -94,6 +101,29 @@ object Macroflection {
       import reflectiveHelpers._
 
       def log(str: String) { c.echo(NoPosition, str) }
+
+      def mkSeqMflection(seqType: Type): Tree = {
+        seqType match {
+          case TypeRef(pre, sym, args) =>
+            val elemType = args.head
+            val mflectType = appliedType(typeCtorOf[SeqMacroflectionAux[_,_]], List(elemType, seqType))
+
+            log("finding seq child mflect for: " + elemType)
+            val elemMflect = mflectFor(elemType)
+            log(s" mflectFor($elemType) = $elemMflect")
+
+            val tree = Apply(
+              Select(
+                New(TypeTree( mflectType )),
+                nme.CONSTRUCTOR
+              ),
+              List(elemMflect) //1st arg block (children)
+            )
+            log("tree: " + tree)
+            tree
+          case _ => c.abort(NoPosition, "WTF???")
+        }
+      }
 
 
       def mkProductMflection(prodType: Type): Tree = {
@@ -134,6 +164,7 @@ object Macroflection {
       }
 
       def mflectFor(tpe: Type): Tree = {
+//        log("internally finding mflect for: " + tpe)
         if (tpe <:< typeOf[Product]) {
           mkProductMflection(tpe)
         } else {
