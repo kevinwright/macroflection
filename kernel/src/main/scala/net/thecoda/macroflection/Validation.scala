@@ -1,4 +1,4 @@
-package macroflection
+package net.thecoda.macroflection
 
 import scala.reflect.runtime.universe._
 import reflect.macros.Context

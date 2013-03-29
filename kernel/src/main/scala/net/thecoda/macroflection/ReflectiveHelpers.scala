@@ -1,4 +1,4 @@
-package macroflection
+package net.thecoda.macroflection
 
 import reflect.api.Universe
 import annotation.tailrec

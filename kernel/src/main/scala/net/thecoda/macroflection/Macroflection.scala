@@ -1,4 +1,4 @@
-package macroflection
+package net.thecoda.macroflection
 
 
 import scala.reflect.runtime.universe._
@@ -9,10 +9,12 @@ import scala.language.experimental.macros
 trait Macroflection {
   type TPE
   def tag: TypeTag[TPE]
+
   def isSeq: Boolean
-  def isCompound: Boolean
   def asSeq: SeqMacroflection[TPE] = this.asInstanceOf[SeqMacroflection[TPE]]
-  def asCompound: CompoundMacroflection[TPE] = this.asInstanceOf[CompoundMacroflection[TPE]]
+
+  def isProduct: Boolean
+  def asProduct: ProductMacroflection[TPE] = this.asInstanceOf[ProductMacroflection[TPE]]
 }
 
 abstract class MacroflectionAux[T : TypeTag] extends Macroflection {
@@ -20,25 +22,22 @@ abstract class MacroflectionAux[T : TypeTag] extends Macroflection {
   val tag = typeTag[T]
 }
 
-
-
-
 class SimpleMacroflection[T: TypeTag] extends MacroflectionAux[T] {
   val isSeq = false
-  val isCompound = false
+  val isProduct = false
 }
 
 trait SeqMacroflection[S] extends MacroflectionAux[S] {
   val isSeq = true
-  val isCompound = false
+  val isProduct = false
   def elem: Macroflection
 }
 
 class SeqMacroflectionAux[T, S <: Seq[T] : TypeTag](val elem: MacroflectionAux[T]) extends SeqMacroflection[S]
 
-class CompoundMacroflection[T: TypeTag](val children: Seq[Macroflection.Child]) extends MacroflectionAux[T]  {
+class ProductMacroflection[T: TypeTag](val children: Seq[Macroflection.Child]) extends MacroflectionAux[T]  {
   val isSeq = false
-  val isCompound = true
+  val isProduct = true
   def child(nme: String): Option[Macroflection.Child] = children find {_.name == nme}
 }
 
@@ -85,11 +84,11 @@ object Macroflection {
     c.Expr[SeqMacroflection[S]](InContext[c.type](c).mkSeqMflection(c.weakTypeOf[S]))
   }
 
-  implicit def productsHaveMflection[T](implicit isProduct: T <:< Product): CompoundMacroflection[T] =
+  implicit def productsHaveMflection[T](implicit isProduct: T <:< Product): ProductMacroflection[T] =
     macro productsHaveMflectionImpl[T]
 
-  def productsHaveMflectionImpl[T : c.WeakTypeTag](c: Context)(isProduct: c.Expr[T <:< Product]): c.Expr[CompoundMacroflection[T]] = {
-    c.Expr[CompoundMacroflection[T]](InContext[c.type](c).mkProductMflection(c.weakTypeOf[T]))
+  def productsHaveMflectionImpl[T : c.WeakTypeTag](c: Context)(isProduct: c.Expr[T <:< Product]): c.Expr[ProductMacroflection[T]] = {
+    c.Expr[ProductMacroflection[T]](InContext[c.type](c).mkProductMflection(c.weakTypeOf[T]))
   }
 
   private object InContext {
@@ -175,7 +174,7 @@ object Macroflection {
       }
 
       def mkProductSchemaTree(prodType: Type, kids: List[Tree]): Tree = {
-        val prodSchemaType = mkAppliedType[CompoundMacroflection](prodType)
+        val prodSchemaType = mkAppliedType[ProductMacroflection](prodType)
         val kidsTree = mkSeq(kids)
 //        log("kidsTree: " + show(kidsTree))
 
